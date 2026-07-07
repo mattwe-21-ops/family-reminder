@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promemoria di Famiglia (GitHub Storage)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            appleBlue: '#007AFF',
+            appleOrange: '#FF9500',
+            appleRed: '#FF3B30',
+            appleGreen: '#34C759',
+            appleDarkBg: '#1C1C1E',
+            appleDarkCard: '#2C2C2E',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100 font-sans flex flex-col overflow-hidden">
+
+  <div id="config-screen" class="fixed inset-0 bg-white dark:bg-appleDarkBg z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-50 dark:bg-appleDarkCard p-6 rounded-2xl border border-gray-200 dark:border-gray-700 max-w-md w-full shadow-xl">
+      <div class="flex items-center space-x-2 mb-4">
+        <i class="fa-brands fa-github text-3xl text-appleBlue"></i>
+        <h2 class="text-xl font-bold">Configura Accesso GitHub</h2>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Per leggere e scrivere i promemoria direttamente sul tuo deposito GitHub, inserisci i dati richiesti.</p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">GitHub Username (Proprietario)</label>
+          <input id="gh-owner" type="text" placeholder="es. tuo-username" class="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-appleBlue">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Nome Repository</label>
+          <input id="gh-repo" type="text" placeholder="es. promemoria-famiglia" class="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-appleBlue">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">GitHub Personal Access Token (Classic o Fine-grained)</label>
+          <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" class="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-appleBlue">
+          <p class="text-[10px] text-gray-400 mt-1">Il token serve a permettere l'autenticazione delle modifiche a nome tuo.</p>
+        </div>
+        <button onclick="saveGitHubConfig()" class="w-full bg-appleBlue text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-600 transition shadow">Connetti e Sincronizza</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="bg-white dark:bg-appleDarkBg border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between z-10">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 bg-appleBlue rounded-lg flex items-center justify-center text-white shadow">
+        <i class="fa-solid fa-list-check text-sm"></i>
+      </div>
+      <span class="font-semibold text-lg tracking-tight">Famiglia Reminders (GitHub)</span>
+    </div>
+    
+    <div class="flex items-center space-x-2">
+      <button onclick="fetchDataFromGitHub()" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Sincronizza Ora">
+        <i class="fa-solid fa-arrow-rotate-right"></i>
+      </button>
+      <button id="theme-toggle" class="p-2 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+        <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+        <i class="fa-solid fa-sun hidden dark:block text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <aside class="w-64 bg-gray-50 dark:bg-appleDarkBg border-r border-gray-200 dark:border-gray-800 p-4 hidden md:flex flex-col space-y-4">
+      <div class="bg-white dark:bg-appleDarkCard p-3 rounded-xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm flex justify-between items-center">
+        <span class="text-sm font-medium text-gray-500">Tutti i Promemoria</span>
+        <span id="total-count" class="text-xl font-bold text-appleBlue">0</span>
+      </div>
+      <div class="text-[11px] text-gray-400 text-center p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        I dati vengono salvati nel file <code class="font-mono bg-white dark:bg-black px-1 py-0.5 rounded">reminders_data.json</code> del tuo repository.
+      </div>
+    </aside>
+
+    <main class="flex-1 bg-white dark:bg-black flex flex-col overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-900 flex justify-between items-center shrink-0">
+        <h2 class="text-2xl font-bold">Elenco Attività</h2>
+        <span id="sync-status" class="text-xs text-appleGreen font-medium flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-appleGreen"></span> Sincronizzato
+        </span>
+      </div>
+
+      <div id="reminders-list" class="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+        </div>
+
+      <div class="p-4 border-t border-gray-100 dark:border-gray-900 bg-white dark:bg-black shrink-0">
+        <form id="add-form" onsubmit="addReminder(event)" class="max-w-3xl mx-auto flex gap-2">
+          <input id="new-title" type="text" placeholder="Aggiungi un nuovo promemoria a mano..." class="flex-1 bg-gray-50 dark:bg-appleDarkCard border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-appleBlue" required>
+          <button type="submit" class="bg-appleBlue hover:bg-blue-600 text-white px-5 rounded-xl text-sm font-semibold transition flex items-center gap-1 shadow">
+            <i class="fa-solid fa-plus"></i> Aggiungi
+          </button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Configurazione Stato Globale
+    let config = { owner: '', repo: '', token: '' };
+    let reminders = [];
+    let fileSha = null; // Necessario a GitHub per aggiornare i file esistenti
+    const FILE_PATH = 'reminders_data.json';
+
+    // Carica configurazione salvata se presente nel browser locale
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedConfig = localStorage.getItem('gh_reminders_config');
+      if (savedConfig) {
+        config = JSON.parse(savedConfig);
+        document.getElementById('gh-owner').value = config.owner;
+        document.getElementById('gh-repo').value = config.repo;
+        document.getElementById('gh-token').value = config.token;
+        document.getElementById('config-screen').classList.add('hidden');
+        fetchDataFromGitHub();
+      }
+    });
+
+    function saveGitHubConfig() {
+      config.owner = document.getElementById('gh-owner').value.trim();
+      config.repo = document.getElementById('gh-repo').value.trim();
+      config.token = document.getElementById('gh-token').value.trim();
+
+      if(!config.owner || !config.repo || !config.token) {
+        alert("Per favore compila tutti i campi di configurazione.");
+        return;
+      }
+
+      localStorage.setItem('gh_reminders_config', JSON.stringify(config));
+      document.getElementById('config-screen').classList.add('hidden');
+      fetchDataFromGitHub();
+    }
+
+    // Lettura Dati tramite GitHub REST API
+    async function fetchDataFromGitHub() {
+      setSyncStatus('Caricamento...', 'appleOrange');
+      const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${FILE_PATH}`;
+      
+      try {
+        const response = await fetch(url, {
+          headers: { 'Authorization': `token ${config.token}` }
+        });
+
+        if (response.status === 404) {
+          // Il file non esiste ancora, lo inizializziamo vuoto
+          reminders = [];
+          fileSha = null;
+          renderReminders();
+          setSyncStatus('Nuovo File (Pronto)', 'appleBlue');
+          return;
+        }
+
+        const data = await response.json();
+        fileSha = data.sha;
+        
+        // Decodifica il contenuto in Base64 nativo di GitHub
+        const decodedContent = decodeURIComponent(escape(atob(data.content)));
+        reminders = JSON.parse(decodedContent);
+        
+        renderReminders();
+        setSyncStatus('Sincronizzato', 'appleGreen');
+      } catch (error) {
+        console.error(error);
+        setSyncStatus('Errore di Connessione', 'appleRed');
+      }
+    }
+
+    // Scrittura e Salvataggio su GitHub (Salva a mano in automatico ad ogni modifica)
+    async function saveDataToGitHub() {
+      setSyncStatus('Salvataggio su GitHub...', 'appleOrange');
+      const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${FILE_PATH}`;
+      
+      // Converte l'oggetto in stringa JSON leggibile ad occhio nudo nel file
+      const jsonString = JSON.stringify(reminders, null, 2);
+      // Codifica sicura in Base64 UTF-8
+      const b64Content = btoa(unescape(encodeURIComponent(jsonString)));
+
+      const bodyData = {
+        message: "Aggiornamento promemoria di famiglia via Web App",
+        content: b64Content
+      };
+
+      // Se stiamo sovrascrivendo un file esistente, GitHub richiede il codice identificativo SHA vecchio
+      if (fileSha) {
+        bodyData.sha = fileSha;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${config.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bodyData)
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          fileSha = resData.content.sha; // Aggiorna lo SHA corrente
+          setSyncStatus('Modifiche Salvate!', 'appleGreen');
+        } else {
+          setSyncStatus('Errore di Scrittura', 'appleRed');
+        }
+      } catch (error) {
+        console.error(error);
+        setSyncStatus('Errore di Rete', 'appleRed');
+      }
+    }
+
+    // Operazioni Interfaccia Utente
+    function renderReminders() {
+      const container = document.getElementById('reminders-list');
+      container.innerHTML = '';
+      
+      document.getElementById('total-count').innerText = reminders.length;
+
+      if(reminders.length === 0) {
+        container.innerHTML = `<p class="text-sm text-gray-400 italic text-center py-8">Nessuna attività presente. Aggiungine una in basso!</p>`;
+        return;
+      }
+
+      reminders.forEach((rem, index) => {
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between p-3 bg-gray-50 dark:bg-appleDarkCard border border-gray-150 dark:border-gray-800 rounded-xl transition ${rem.completed ? 'opacity-50' : ''}`;
+        
+        item.innerHTML = `
+          <div class="flex items-center space-x-3 flex-1 min-w-0">
+            <button onclick="toggleComplete(${index})" class="w-5 h-5 rounded-full border-2 ${rem.completed ? 'bg-appleBlue border-appleBlue text-white' : 'border-gray-400'} flex items-center justify-center shrink-0">
+              ${rem.completed ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+            </button>
+            <span class="text-sm font-medium ${rem.completed ? 'line-through text-gray-400' : ''} truncate">${rem.title}</span>
+          </div>
+          <button onclick="deleteReminder(${index})" class="text-appleRed hover:bg-red-50 dark:hover:bg-red-950/20 p-2 rounded-lg transition ml-2">
+            <i class="fa-regular fa-trash-can text-sm"></i>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function addReminder(e) {
+      e.preventDefault();
+      const input = document.getElementById('new-title');
+      const title = input.value.trim();
+      if(!title) return;
+
+      reminders.push({
+        title: title,
+        completed: false,
+        createdAt: new Date().toISOString()
+      });
+
+      input.value = '';
+      renderReminders();
+      saveDataToGitHub();
+    }
+
+    function toggleComplete(index) {
+      reminders[index].completed = !reminders[index].completed;
+      renderReminders();
+      saveDataToGitHub();
+    }
+
+    function deleteReminder(index) {
+      reminders.splice(index, 1);
+      renderReminders();
+      saveDataToGitHub();
+    }
+
+    function setSyncStatus(text, colorClass) {
+      const el = document.getElementById('sync-status');
+      el.innerText = text;
+      
+      const textColors = {
+        appleGreen: 'text-appleGreen',
+        appleOrange: 'text-appleOrange',
+        appleRed: 'text-appleRed',
+        appleBlue: 'text-appleBlue'
+      };
+      
+      el.className = `text-xs font-medium flex items-center gap-1 ${textColors[colorClass]}`;
+    }
+
+    // Gestione tema scuro/chiaro
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    themeToggleBtn.addEventListener('click', () => {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+        }
+    });
+  </script>
+</body>
+</html>
